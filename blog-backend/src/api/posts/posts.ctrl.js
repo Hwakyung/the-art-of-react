@@ -4,12 +4,36 @@ import Joi from "joi"
 
 const { ObjectId } = mongoose.Types;
 
-export const checkObjectId = (ctx, next) => {
+export const getPostById = async (ctx, next) => {
     const { id } = ctx.params;
 
     if (!ObjectId.isValid(id)) {
         ctx.status = 400;
         return;
+    }
+
+    try {
+        const post = await Post.findById(id);
+        if (!post) {
+            ctx.status = 404;
+            return;
+
+        }
+        ctx.state.post = post;
+        return next();
+    } catch (e) {
+        ctx.throw(500, e)
+    }
+
+    return next();
+}
+
+export const checkOwnPost = (ctx, next) => {
+    const { user, post } = ctx.state;
+    if (post.user._id.toString() !== user._id) {
+        ctx.status = 403;
+        return;
+
     }
     return next();
 }
@@ -32,7 +56,9 @@ export const write = async ctx => {
     }
 
     const { title, body, tags } = ctx.request.body;
-    const post = new Post({ title, body, tags });
+    console.log(ctx.state.user)
+    const post = new Post({ title, body, tags, user: ctx.state.user });
+    console.log(post)
     try {
         await post.save();
         ctx.body = post;
@@ -48,6 +74,10 @@ export const list = async ctx => {
         ctx.status = 400;
         return;
     }
+    const { tag, username } = ctx.query;
+    const query = {
+        ...(username ? { "user.username": username } : {}), ...(tag ? { tags: tag } : {})
+    }
     try {
         //lean 함수는 처으ㅁ부터 데이터를 조회할 때 JSON 형태로 조회 가능
         const posts = await Post.find()
@@ -56,7 +86,7 @@ export const list = async ctx => {
             .skip((page - 1) * 10)
             .lean()
             .exec();
-        const postCount = await Post.countDocuments().exec();
+        const postCount = await Post.countDocuments(query).exec();
         ctx.set('Last-Page', Math.ceil(postCount / 10));
 
         ctx.body = posts.map(post => ({
@@ -67,19 +97,8 @@ export const list = async ctx => {
     }
 };
 
-export const read = async ctx => {
-    const { id } = ctx.params;
-    try {
-        const post = await Post.findById(id).exec();
-        console.log(id)
-        if (!post) {
-            ctx.status = 404;
-            return;
-        }
-        ctx.body = post
-    } catch (e) {
-        ctx.throw(500, e)
-    }
+export const read = ctx => {
+    ctx.body = ctx.state.post
 };
 
 export const remove = async ctx => {

@@ -9,6 +9,6 @@ export default function createFakeDate() {
     }))
 
     Post.insertMany(posts, (err, docs) => {
-        console.log(docs)
+        // console.log(docs)
     })
 }
