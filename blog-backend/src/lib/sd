@@ -1,0 +1,25 @@
+import { Controller, Get, Param, Post, Delete, Patch } from '@nestjs/common';
+
+@Controller('movies')
+export class MoviesController {
+  @Get()
+  getAll() {
+    return 'This will return all movies';
+  }
+
+  @Get('/:id')
+  getOne(@Param('id') movieId: string) {
+    return `This will return one movie with the id: ${movieId}`;
+  }
+
+  @Get('/:id/episode')
+  getEpisodeAll(
+    @Param('id') podcastId: string,
+  
+  ) {
+ 
+    return this.podcastsService.getEpisodeAll(podcastId);
+  }
+
+
+}
